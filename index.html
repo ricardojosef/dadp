@@ -17,7 +17,6 @@
 <input type="number" id="qtd" />
 
 <button id="add">Adicionar Ordem</button>
-<button id="reset">Reiniciar pedidos do dia</button>
 
 <h2>Fila de ordens</h2>
 <div id="fila"></div>
@@ -26,77 +25,33 @@
 <div id="postos"></div>
 
 <script type="module">
-import {db, ref, push, onValue, update, remove} from "./firebase.js";
+import {db, ref, push, onValue, update} from "./firebase.js";
 
-add.onclick = () => {
+document.getElementById("add").onclick = () => {
   push(ref(db, "orders"), {
-    tipo: tipo.value,
-    qtd: Number(qtd.value),
-    etapa: 0,
+    tipo: document.getElementById("tipo").value,
+    qtd: Number(document.getElementById("qtd").value),
+    etapa: 0,           // posto atual → 0 = posto1
     status: "pendente"
   })
 }
 
-reset.onclick = ()=>{
-  remove(ref(db,"orders"))
-}
-
 onValue(ref(db,"orders"), snap=>{
-  fila.innerHTML = ""
+  const div = document.getElementById("fila")
+  div.innerHTML = ""
   const orders = snap.val()
   if(!orders) return
   Object.entries(orders).forEach(([id,o])=>{
-    fila.innerHTML += `<div>#${id} – ${o.tipo} – etapa:${o.etapa} – status:${o.status}</div>`
+    div.innerHTML += `<div>#${id} – ${o.tipo} – etapa:${o.etapa} – status:${o.status}</div>`
   })
 })
 
 onValue(ref(db,"posts"), snap=>{
-  postos.innerHTML = ""
+  const div = document.getElementById("postos")
   const p = snap.val()||{}
+  div.innerHTML = ""
   Object.entries(p).forEach(([id,post])=>{
-    postos.innerHTML += `<div>Posto ${id} — atual:${post.currentOrder||"-"} — ANDON:${post.andon||"ok"}</div>`
-  })
-})
-</script>
-</body>
-</htdia</button>
-
-<h2>Fila de ordens</h2>
-<div id="fila"></div>
-
-<h2>Status dos postos</h2>
-<div id="postos"></div>
-
-<script type="module">
-import {db, ref, push, onValue, update, remove} from "./firebase.js";
-
-add.onclick = () => {
-  push(ref(db, "orders"), {
-    tipo: tipo.value,
-    qtd: Number(qtd.value),
-    etapa: 0,
-    status: "pendente"
-  })
-}
-
-reset.onclick = ()=>{
-  remove(ref(db,"orders"))
-}
-
-onValue(ref(db,"orders"), snap=>{
-  fila.innerHTML = ""
-  const orders = snap.val()
-  if(!orders) return
-  Object.entries(orders).forEach(([id,o])=>{
-    fila.innerHTML += `<div>#${id} – ${o.tipo} – etapa:${o.etapa} – status:${o.status}</div>`
-  })
-})
-
-onValue(ref(db,"posts"), snap=>{
-  postos.innerHTML = ""
-  const p = snap.val()||{}
-  Object.entries(p).forEach(([id,post])=>{
-    postos.innerHTML += `<div>Posto ${id} — atual:${post.currentOrder||"-"} — ANDON:${post.andon||"ok"}</div>`
+    div.innerHTML += `<div>Posto ${id} — atual:${post.currentOrder||"-"} — ANDON:${post.andon||"ok"}</div>`
   })
 })
 </script>
