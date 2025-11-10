@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Posto 1</title></head>
+<body>
+<h1>Posto 1</h1>
+
+<div id="ordem"></div>
+
+<button id="feito">Tarefa concluída</button>
+<button id="andon">ACIONAR ANDON</button>
+
+<script type="module">
+import {db, ref, onValue, update} from "./firebase.js";
+
+const posto = 1
+
+// escuta ordens cujo campo etapa == 0  (posto1)
+onValue(ref(db,"orders"), snap=>{
+  const orders = snap.val()||{}
+  let found = false
+  for(const [id,o] of Object.entries(orders)){
+    if(o.etapa === 0 && o.status!="finalizado"){
+      found = {id,o}
+      break
+    }
+  }
+  document.getElementById("ordem").innerText = found ? 
+    `Ordem atual: #${found.id} — ${found.o.tipo}` :
+    "Sem ordem"
+  window.currentOrder = found
+})
+
+// concluir tarefa deste posto
+document.getElementById("feito").onclick = ()=>{
+  if(!window.currentOrder) return
+  update(ref(db,"orders/"+window.currentOrder.id),{
+    etapa:1 // vai pro posto2
+  })
+}
+
+// andon
+document.getElementById("andon").onclick = ()=>{
+  update(ref(db,"posts/"+posto), {andon:"ALERTA"})
+}
+</script>
+</body>
+</html>
