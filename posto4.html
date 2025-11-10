@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><title>Posto 1</title></head>
+<head><meta charset="UTF-8"><title>Posto 4</title></head>
 <body>
 <h1>Posto 4</h1>
 
@@ -10,11 +10,11 @@
 <button id="andon">ACIONAR ANDON</button>
 
 <script type="module">
-import {db, ref, onValue, update} from "./firebase.js";
+import {db, ref, onValue, update, increment} from "./firebase.js";
 
 const posto = 4
 
-// escuta ordens cujo campo etapa == 0  (posto1)
+// escuta ordens cujo campo etapa == 3  (posto4)
 onValue(ref(db,"orders"), snap=>{
   const orders = snap.val()||{}
   let found = false
@@ -30,11 +30,22 @@ onValue(ref(db,"orders"), snap=>{
   window.currentOrder = found
 })
 
-// concluir tarefa deste posto
+// concluir tarefa deste posto (FINALIZA)
 document.getElementById("feito").onclick = ()=>{
   if(!window.currentOrder) return
-  update(ref(db,"orders/"+window.currentOrder.id),{
-    etapa:4 // vai pro posto2
+  
+  const orderId = window.currentOrder.id
+  const tipo = window.currentOrder.o.tipo  // pequeno ou grande
+
+  // marca ordem como finalizada
+  update(ref(db,"orders/"+orderId),{
+    etapa: 999,
+    status: "finalizado"
+  })
+
+  // incrementa contador de produção
+  update(ref(db,"prodCount"),{
+    [tipo]: increment(1)
   })
 }
 
