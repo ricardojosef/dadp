@@ -2,7 +2,7 @@
 <html>
 <head><meta charset="UTF-8"><title>Posto 1</title></head>
 <body>
-<h1>Posto 1</h1>
+<h1>Posto 3</h1>
 
 <div id="ordem"></div>
 
@@ -34,7 +34,7 @@ onValue(ref(db,"orders"), snap=>{
 document.getElementById("feito").onclick = ()=>{
   if(!window.currentOrder) return
   update(ref(db,"orders/"+window.currentOrder.id),{
-    etapa:1 // vai pro posto2
+    etapa:3 // vai pro posto2
   })
 }
 
