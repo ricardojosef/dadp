@@ -3,58 +3,119 @@
 <head>
   <meta charset="UTF-8">
   <title>PCP</title>
-
+  <style>
+    body {
+      font-family: 'Sora', sans-serif;
+      background: #f4f4f4;
+      color: #333;
+      text-align: center;
+      margin: 40px;
+    }
+    h1 {
+      color: #007bff;
+    }
+    select, input, button {
+      margin: 5px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #reset {
+      background-color: #e74c3c;
+    }
+    #reset:hover {
+      background-color: #c0392b;
+    }
+    #fila, #postos {
+      margin: 20px auto;
+      width: 80%;
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: left;
+    }
+  </style>
 </head>
 <body>
-<h1>PCP - Dashboard</h1>
 
-<label>Tipo:</label>
-<select id="tipo">
-  <option value="pequeno">parafuso pequeno</option>
-  <option value="grande">parafuso grande</option>
-</select>
+  <h1>PCP - Fábrica dos Parafusos</h1>
 
-<label>Quantidade:</label>
-<input type="number" id="qtd" />
+  <div>
+    <label>Tipo:</label>
+    <select id="tipo">
+      <option value="pequeno">Parafuso pequeno</option>
+      <option value="grande">Parafuso grande</option>
+    </select>
 
-<button id="add">Adicionar Ordem</button>
+    <label>Quantidade:</label>
+    <input type="number" id="qtd" />
 
-<h2>Fila de ordens</h2>
-<div id="fila"></div>
+    <button id="add">Adicionar Ordem</button>
+    <button id="reset">Reiniciar Dia</button>
+  </div>
 
-<h2>Status dos postos</h2>
-<div id="postos"></div>
+  <h2>📦 Fila de Ordens</h2>
+  <div id="fila"></div>
 
-<script type="module">
-import {db, ref, push, onValue, update} from "./firebase.js";
+  <h2>🏭 Status dos Postos</h2>
+  <div id="postos"></div>
 
-document.getElementById("add").onclick = () => {
-  push(ref(db, "orders"), {
-    tipo: document.getElementById("tipo").value,
-    qtd: Number(document.getElementById("qtd").value),
-    etapa: 0,           // posto atual → 0 = posto1
-    status: "pendente"
-  })
-}
+  <script type="module">
+    import {db, ref, push, onValue, update, remove} from "./firebase.js";
 
-onValue(ref(db,"orders"), snap=>{
-  const div = document.getElementById("fila")
-  div.innerHTML = ""
-  const orders = snap.val()
-  if(!orders) return
-  Object.entries(orders).forEach(([id,o])=>{
-    div.innerHTML += `<div>#${id} – ${o.tipo} – etapa:${o.etapa} – status:${o.status}</div>`
-  })
-})
+    // Adicionar nova ordem
+    document.getElementById("add").onclick = () => {
+      push(ref(db, "orders"), {
+        tipo: document.getElementById("tipo").value,
+        qtd: Number(document.getElementById("qtd").value),
+        etapa: 0,
+        status: "pendente"
+      })
+    }
 
-onValue(ref(db,"posts"), snap=>{
-  const div = document.getElementById("postos")
-  const p = snap.val()||{}
-  div.innerHTML = ""
-  Object.entries(p).forEach(([id,post])=>{
-    div.innerHTML += `<div>Posto ${id} — atual:${post.currentOrder||"-"} — ANDON:${post.andon||"ok"}</div>`
-  })
-})
-</script>
+    // Botão de reiniciar dia (apagar pedidos)
+    document.getElementById("reset").onclick = async () => {
+      if (confirm("Tem certeza que deseja reiniciar o dia? Isso apagará todas as ordens.")) {
+        await remove(ref(db, "orders"));
+        alert("✅ Todos os pedidos foram apagados!");
+      }
+    }
+
+    // Mostrar fila de ordens em tempo real
+    onValue(ref(db,"orders"), snap=>{
+      const div = document.getElementById("fila")
+      div.innerHTML = ""
+      const orders = snap.val()
+      if(!orders) {
+        div.innerHTML = "<i>Sem pedidos no momento</i>"
+        return
+      }
+      Object.entries(orders).forEach(([id,o])=>{
+        div.innerHTML += `<div>#${id} – ${o.tipo} – etapa:${o.etapa} – status:${o.status}</div>`
+      })
+    })
+
+    // Mostrar status dos postos
+    onValue(ref(db,"posts"), snap=>{
+      const div = document.getElementById("postos")
+      const p = snap.val()||{}
+      div.innerHTML = ""
+      Object.entries(p).forEach(([id,post])=>{
+        div.innerHTML += `<div>Posto ${id} — atual:${post.currentOrder||"-"} — ANDON:${post.andon||"ok"}</div>`
+      })
+    })
+  </script>
 </body>
 </html>
