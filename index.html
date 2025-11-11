@@ -1,26 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>PCP</title>
+  <title>PCP - Fábrica dos Parafusos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: 'Sora', sans-serif;
-      background: #f4f4f4;
+      background: #f5f6fa;
       color: #333;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ======== MENU SUPERIOR ======== */
+    nav {
+      background-color: #007bff;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 40px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    nav h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    nav .links {
+      display: flex;
+      gap: 15px;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      transition: opacity 0.2s;
+    }
+
+    nav a:hover {
+      opacity: 0.8;
+    }
+
+    /* ======== CONTEÚDO ======== */
+    main {
       text-align: center;
-      margin: 40px;
+      padding: 40px 20px;
+      max-width: 900px;
+      margin: auto;
     }
-    h1 {
-      color: #007bff;
-    }
+
     select, input, button {
       margin: 5px;
-      padding: 10px;
+      padding: 10px 12px;
       font-size: 16px;
       border-radius: 8px;
       border: 1px solid #ccc;
     }
+
     button {
       cursor: pointer;
       background-color: #007bff;
@@ -28,94 +72,125 @@
       border: none;
       transition: background 0.3s;
     }
+
     button:hover {
       background-color: #0056b3;
     }
+
     #reset {
       background-color: #e74c3c;
     }
+
     #reset:hover {
       background-color: #c0392b;
     }
+
     #fila, #postos {
-      margin: 20px auto;
-      width: 80%;
+      margin: 25px auto;
+      width: 90%;
       background: white;
       border-radius: 10px;
       padding: 15px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       text-align: left;
     }
+
+    h2 {
+      color: #007bff;
+    }
+
   </style>
 </head>
 <body>
 
-  <h1>PCP - Fábrica dos Parafusos</h1>
+  <!-- ======== MENU SUPERIOR ======== -->
+  <nav>
+    <h1>🏭 PCP - Fábrica dos Parafusos</h1>
+    <div class="links">
+      <a href="https://ricardojosef.github.io/dadp/pcp">PCP</a>
+      <a href="https://ricardojosef.github.io/dadp/posto1">Posto 1</a>
+      <a href="https://ricardojosef.github.io/dadp/posto2">Posto 2</a>
+      <a href="https://ricardojosef.github.io/dadp/posto3">Posto 3</a>
+      <a href="https://ricardojosef.github.io/dadp/posto4">Posto 4</a>
+    </div>
+  </nav>
 
-  <div>
-    <label>Tipo:</label>
-    <select id="tipo">
-      <option value="pequeno">Parafuso pequeno</option>
-      <option value="grande">Parafuso grande</option>
-    </select>
+  <!-- ======== CONTEÚDO PRINCIPAL ======== -->
+  <main>
+    <div>
+      <label>Tipo:</label>
+      <select id="tipo">
+        <option value="pequeno">Parafuso pequeno</option>
+        <option value="grande">Parafuso grande</option>
+      </select>
 
-    <label>Quantidade:</label>
-    <input type="number" id="qtd" />
+      <label>Quantidade:</label>
+      <input type="number" id="qtd" placeholder="Qtd" />
 
-    <button id="add">Adicionar Ordem</button>
-    <button id="reset">Reiniciar Dia</button>
-  </div>
+      <button id="add">Adicionar Ordem</button>
+      <button id="reset">Reiniciar Dia</button>
+    </div>
 
-  <h2>📦 Fila de Ordens</h2>
-  <div id="fila"></div>
+    <h2>📦 Fila de Ordens</h2>
+    <div id="fila"></div>
 
-  <h2>🏭 Status dos Postos</h2>
-  <div id="postos"></div>
+    <h2>🧰 Status dos Postos</h2>
+    <div id="postos"></div>
+  </main>
 
   <script type="module">
     import {db, ref, push, onValue, update, remove} from "./firebase.js";
 
-    // Adicionar nova ordem
+    // Adiciona nova ordem
     document.getElementById("add").onclick = () => {
+      const tipo = document.getElementById("tipo").value;
+      const qtd = Number(document.getElementById("qtd").value);
+      if (!qtd || qtd <= 0) {
+        alert("Informe uma quantidade válida!");
+        return;
+      }
+
       push(ref(db, "orders"), {
-        tipo: document.getElementById("tipo").value,
-        qtd: Number(document.getElementById("qtd").value),
+        tipo,
+        qtd,
         etapa: 0,
         status: "pendente"
-      })
-    }
+      });
+    };
 
-    // Botão de reiniciar dia (apagar pedidos)
+    // Reiniciar o dia (apagar todas as ordens)
     document.getElementById("reset").onclick = async () => {
       if (confirm("Tem certeza que deseja reiniciar o dia? Isso apagará todas as ordens.")) {
         await remove(ref(db, "orders"));
         alert("✅ Todos os pedidos foram apagados!");
       }
-    }
+    };
 
-    // Mostrar fila de ordens em tempo real
-    onValue(ref(db,"orders"), snap=>{
-      const div = document.getElementById("fila")
-      div.innerHTML = ""
-      const orders = snap.val()
-      if(!orders) {
-        div.innerHTML = "<i>Sem pedidos no momento</i>"
-        return
+    // Atualiza a fila de ordens em tempo real
+    onValue(ref(db, "orders"), (snap) => {
+      const div = document.getElementById("fila");
+      div.innerHTML = "";
+      const orders = snap.val();
+      if (!orders) {
+        div.innerHTML = "<i>Sem pedidos no momento</i>";
+        return;
       }
-      Object.entries(orders).forEach(([id,o])=>{
-        div.innerHTML += `<div>#${id} – ${o.tipo} – etapa:${o.etapa} – status:${o.status}</div>`
-      })
-    })
 
-    // Mostrar status dos postos
-    onValue(ref(db,"posts"), snap=>{
-      const div = document.getElementById("postos")
-      const p = snap.val()||{}
-      div.innerHTML = ""
-      Object.entries(p).forEach(([id,post])=>{
-        div.innerHTML += `<div>Posto ${id} — atual:${post.currentOrder||"-"} — ANDON:${post.andon||"ok"}</div>`
-      })
-    })
+      Object.entries(orders).forEach(([id, o]) => {
+        div.innerHTML += `<div>#${id} – ${o.tipo} – etapa:${o.etapa} – status:${o.status}</div>`;
+      });
+    });
+
+    // Atualiza status dos postos em tempo real
+    onValue(ref(db, "posts"), (snap) => {
+      const div = document.getElementById("postos");
+      const p = snap.val() || {};
+      div.innerHTML = "";
+      Object.entries(p).forEach(([id, post]) => {
+        div.innerHTML += `<div>Posto ${id} — atual:${post.currentOrder || "-"} — ANDON:${post.andon || "ok"}</div>`;
+      });
+    });
   </script>
+
 </body>
 </html>
