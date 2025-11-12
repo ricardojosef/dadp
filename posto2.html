@@ -1,65 +1,85 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Posto 1</title><style>
-    button#feito{
-      height: 500px;
-      width: 500px;
-      background-color: rgb(69, 204, 69);
-      font-size: 40px;
-      font-weight:bold ;
+<html lang="pt-BR">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Posto 2</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Sora', sans-serif;
+      background: #f5f6fa;
+      color: #000;
+      margin: 0;
+      padding: 0;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-     button#andon{
-      height: 500px;
-      width: 500px;
+
+    h1 {
+      text-align: center;
+      background-color: #007bff;
+      color: white;
+      padding: 15px;
+      margin: 0;
+      font-size: 28px;
+      width: 100%;
+    }
+
+    .botoes {
+      display: flex;
+      justify-content: center;
+      padding: 60px;
+    }
+
+    button {
+      height: 250px;
+      width: 350px;
+      font-size: 40px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s;
       background-color: rgb(204, 69, 69);
-      font-size: 40px;
-       font-weight:bold;
     }
-    div#ordem{
-      font-size: 200px;
+
+    button:hover {
+      transform: scale(1.05);
     }
-  </style></head>
+
+    @media (max-width: 767px) {
+      body {
+        padding: 20px;
+      }
+      button {
+        width: 90%;
+        height: 200px;
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
 <body>
-<h1>Posto 2</h1>
+  <h1>Posto 2</h1>
 
-<div id="ordem"></div>
+  <div class="botoes">
+    <button id="andon">ACIONAR ANDON</button>
+  </div>
 
-<button id="feito">Tarefa concluída</button>
-<button id="andon">ACIONAR ANDON</button>
+  <script type="module">
+    import { db, ref, update } from "./firebase.js";
 
-<script type="module">
-import {db, ref, onValue, update} from "./firebase.js";
+    const posto = 2;
 
-const posto = 2
-
-// escuta ordens cujo campo etapa == 0  (posto1)
-onValue(ref(db,"orders"), snap=>{
-  const orders = snap.val()||{}
-  let found = false
-  for(const [id,o] of Object.entries(orders)){
-    if(o.etapa === 1 && o.status!="finalizado"){
-      found = {id,o}
-      break
-    }
-  }
-  document.getElementById("ordem").innerText = found ? 
-    `Ordem atual: #${found.id} — ${found.o.tipo}` :
-    "Sem ordem"
-  window.currentOrder = found
-})
-
-// concluir tarefa deste posto
-document.getElementById("feito").onclick = ()=>{
-  if(!window.currentOrder) return
-  update(ref(db,"orders/"+window.currentOrder.id),{
-    etapa:2 // vai pro posto2
-  })
-}
-
-// andon
-document.getElementById("andon").onclick = ()=>{
-  update(ref(db,"posts/"+posto), {andon:"ALERTA"})
-}
-</script>
+    document.getElementById("andon").onclick = () => {
+      update(ref(db, "posts/" + posto), { andon: "ALERTA" });
+    };
+  </script>
 </body>
 </html>
