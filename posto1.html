@@ -20,6 +20,16 @@
     }
     div#ordem {
       font-size: 150px;
+      transition: color 0.3s;
+    }
+
+    /* --- Animação de piscar quando chega novo pedido --- */
+    @keyframes pisca {
+      0%, 100% { color: black; }
+      50% { color: rgb(0, 132, 255); }
+    }
+    .novoPedidoPisca {
+      animation: pisca 0.5s infinite;
     }
   </style>
 </head>
@@ -35,6 +45,7 @@
     import { db, ref, onValue, update } from "./firebase.js";
 
     const posto = 1;
+    let ultimoPedidoId = null; // guarda o último pedido exibido
 
     // Escuta ordens cujo campo etapa == 0 (posto 1)
     onValue(ref(db, "orders"), snap => {
@@ -47,9 +58,21 @@
         }
       }
 
-      document.getElementById("ordem").innerText = found
-        ? `Ordem atual: ${found.o.numero || found.id} — ${found.o.tipo}`
-        : "Sem ordem";
+      const div = document.getElementById("ordem");
+
+      if (found) {
+        div.innerText = `Ordem atual: ${found.o.numero || found.id} — ${found.o.tipo}`;
+
+        // Se for um pedido novo (diferente do anterior), aplica o piscar
+        if (found.id !== ultimoPedidoId) {
+          div.classList.add("novoPedidoPisca");
+          setTimeout(() => div.classList.remove("novoPedidoPisca"), 3000);
+          ultimoPedidoId = found.id;
+        }
+      } else {
+        div.innerText = "Sem ordem";
+        ultimoPedidoId = null;
+      }
 
       window.currentOrder = found;
     });
@@ -58,7 +81,7 @@
     document.getElementById("feito").onclick = () => {
       if (!window.currentOrder) return;
       update(ref(db, "orders/" + window.currentOrder.id), {
-        etapa: Number(1) // vai pro posto 2
+        etapa: 1 // vai pro posto 2
       });
     };
 
