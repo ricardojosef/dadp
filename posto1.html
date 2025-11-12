@@ -37,7 +37,6 @@
       gap: 30px;
     }
 
-    /* Pedido atual (à esquerda) */
     #ordem {
       flex: 1;
       font-size: 120px;
@@ -46,7 +45,6 @@
       padding-left: 50px;
     }
 
-    /* Log de pedidos (à direita) */
     #log {
       flex: 0 0 40%;
       background: white;
@@ -55,7 +53,7 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       max-height: 60vh;
       overflow-y: auto;
-      scroll-behavior: smooth; /* rolagem suave */
+      scroll-behavior: smooth;
     }
 
     #log h2 {
@@ -74,7 +72,6 @@
       font-size: 18px;
     }
 
-    /* Botões */
     .botoes {
       display: flex;
       justify-content: center;
@@ -113,9 +110,7 @@
         display: none !important;
       }
     }
-    
 
-    /* --- Animação de piscar quando chega novo pedido --- */
     @keyframes pisca {
       0%, 100% { color: black; }
       50% { color: rgb(0, 132, 255); }
@@ -184,8 +179,6 @@
 
       if (found) {
         divOrdem.innerText = `${found.o.numero || found.id} — ${found.o.tipo}`;
-
-        // Piscar quando chega novo pedido
         if (found.id !== ultimoPedidoId) {
           divOrdem.classList.add("novoPedidoPisca");
           setTimeout(() => divOrdem.classList.remove("novoPedidoPisca"), 3000);
@@ -199,31 +192,27 @@
       window.currentOrder = found;
     });
 
-    // Botão "Tarefa concluída"
+    // ✅ Envia direto para o Posto 4
     document.getElementById("feito").onclick = () => {
       if (!window.currentOrder) return;
 
       const { id, o } = window.currentOrder;
       update(ref(db, "orders/" + id), {
-        etapa: posto // avança para o próximo posto
+        etapa: 3 // <-- envia direto para o posto 4
       });
 
       pedidosConcluidos.unshift(`${o.numero || id} — ${o.tipo}`);
       atualizarLog();
     };
 
-    // Atualiza lista de log no HTML com scroll automático
     function atualizarLog() {
       listaLog.innerHTML = pedidosConcluidos
         .map(p => `<div class="pedido-log">${p}</div>`)
         .join("");
-
-      // faz o scroll automático para o topo (último pedido adicionado)
       const logDiv = document.getElementById("log");
       logDiv.scrollTop = 0;
     }
 
-    // Botão "ANDON"
     document.getElementById("andon").onclick = () => {
       update(ref(db, "posts/" + posto), { andon: "ALERTA" });
     };

@@ -1,65 +1,222 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Posto 1</title><style>
-    button#feito{
-      height: 500px;
-      width: 500px;
+<html lang="pt-BR">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Posto 4</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Sora', sans-serif;
+      background: #f5f6fa;
+      color: #000;
+      margin: 0;
+      padding: 0;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    h1 {
+      text-align: center;
+      background-color: #007bff;
+      color: white;
+      padding: 15px;
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .content {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 40px;
+      flex-wrap: wrap;
+      gap: 30px;
+    }
+
+    #ordem {
+      flex: 1;
+      font-size: 120px;
+      transition: color 0.3s;
+      text-align: left;
+      padding-left: 50px;
+    }
+
+    #log {
+      flex: 0 0 40%;
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      max-height: 60vh;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+    }
+
+    #log h2 {
+      color: #007bff;
+      font-size: 22px;
+      margin-top: 0;
+      text-align: center;
+    }
+
+    .pedido-log {
+      background: #f8f8f8;
+      border-left: 4px solid #28a745;
+      margin: 8px 0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 18px;
+    }
+
+    .botoes {
+      display: flex;
+      justify-content: center;
+      gap: 60px;
+      padding: 40px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      height: 250px;
+      width: 350px;
+      font-size: 40px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    #feito {
       background-color: rgb(69, 204, 69);
-      font-size: 40px;
-      font-weight:bold ;
     }
-     button#andon{
-      height: 500px;
-      width: 500px;
+
+    #andon {
       background-color: rgb(204, 69, 69);
-      font-size: 40px;
-       font-weight:bold;
     }
-    div#ordem{
-      font-size: 200px;
+
+    button:hover {
+      transform: scale(1.05);
     }
-  </style></head>
+
+    @media (max-width: 767px) {
+      #ordem,
+      #log {
+        display: none !important;
+      }
+    }
+
+    @keyframes pisca {
+      0%, 100% { color: black; }
+      50% { color: rgb(0, 132, 255); }
+    }
+
+    .novoPedidoPisca {
+      animation: pisca 0.5s infinite;
+    }
+
+    @media (max-width: 900px) {
+      .content {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      #ordem {
+        font-size: 80px;
+        text-align: center;
+        padding-left: 0;
+      }
+
+      #log {
+        width: 90%;
+        max-height: 40vh;
+      }
+    }
+  </style>
+</head>
 <body>
-<h1>Posto 4</h1>
+  <h1>Posto 4</h1>
 
-<div id="ordem"></div>
+  <div class="content">
+    <div id="ordem">Sem ordem</div>
 
-<button id="feito">Tarefa concluída</button>
-<button id="andon">ACIONAR ANDON</button>
+    <div id="log">
+      <h2>Pedidos Concluídos</h2>
+      <div id="lista-log"></div>
+    </div>
+  </div>
 
-<script type="module">
-import {db, ref, onValue, update} from "./firebase.js";
+  <div class="botoes">
+    <button id="feito">TAREFA CONCLUÍDA</button>
+    <button id="andon">ACIONAR ANDON</button>
+  </div>
 
-const posto = 4
+  <script type="module">
+    import { db, ref, onValue, update } from "./firebase.js";
 
-// escuta ordens cujo campo etapa == 0  (posto1)
-onValue(ref(db,"orders"), snap=>{
-  const orders = snap.val()||{}
-  let found = false
-  for(const [id,o] of Object.entries(orders)){
-    if(o.etapa === 3 && o.status!="finalizado"){
-      found = {id,o}
-      break
+    const posto = 4;
+    let ultimoPedidoId = null;
+    const divOrdem = document.getElementById("ordem");
+    const listaLog = document.getElementById("lista-log");
+    let pedidosConcluidos = [];
+
+    // Escuta ordens com etapa == 3 (vindo do posto 3)
+    onValue(ref(db, "orders"), snap => {
+      const orders = snap.val() || {};
+      let found = null;
+
+      for (const [id, o] of Object.entries(orders)) {
+        if (Number(o.etapa) === posto - 1 && o.status !== "finalizado") {
+          found = { id, o };
+          break;
+        }
+      }
+
+      if (found) {
+        divOrdem.innerText = `${found.o.numero || found.id} — ${found.o.tipo}`;
+        if (found.id !== ultimoPedidoId) {
+          divOrdem.classList.add("novoPedidoPisca");
+          setTimeout(() => divOrdem.classList.remove("novoPedidoPisca"), 3000);
+          ultimoPedidoId = found.id;
+        }
+      } else {
+        divOrdem.innerText = "Sem ordem";
+        ultimoPedidoId = null;
+      }
+
+      window.currentOrder = found;
+    });
+
+    // ✅ Envia para o PCP marcando como finalizado
+    document.getElementById("feito").onclick = () => {
+      if (!window.currentOrder) return;
+
+      const { id, o } = window.currentOrder;
+      update(ref(db, "orders/" + id), {
+        status: "finalizado",
+        etapa: 4
+      });
+
+      pedidosConcluidos.unshift(`${o.numero || id} — ${o.tipo}`);
+      atualizarLog();
+    };
+
+    function atualizarLog() {
+      listaLog.innerHTML = pedidosConcluidos
+        .map(p => `<div class="pedido-log">${p}</div>`)
+        .join("");
+      const logDiv = document.getElementById("log");
+      logDiv.scrollTop = 0;
     }
-  }
-  document.getElementById("ordem").innerText = found ? 
-    `Ordem atual: #${found.id} — ${found.o.tipo}` :
-    "Sem ordem"
-  window.currentOrder = found
-})
 
-// concluir tarefa deste posto
-document.getElementById("feito").onclick = ()=>{
-  if(!window.currentOrder) return
-  update(ref(db,"orders/"+window.currentOrder.id),{
-    etapa:4 // vai pro posto2
-  })
-}
-
-// andon
-document.getElementById("andon").onclick = ()=>{
-  update(ref(db,"posts/"+posto), {andon:"ALERTA"})
-}
-</script>
+    document.getElementById("andon").onclick = () => {
+      update(ref(db, "posts/" + posto), { andon: "ALERTA" });
+    };
+  </script>
 </body>
 </html>
