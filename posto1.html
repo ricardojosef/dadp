@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
   <title>Posto 1</title>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
@@ -106,23 +107,13 @@
       transform: scale(1.05);
     }
 
-    @media(max-width:767px){
+    @media (max-width: 767px) {
+      #ordem,
       #log {
-     display:none;
+        display: none !important;
+      }
     }
-
-    #log h2 {
-      display:none;
-    }
-
-    .pedido-log {
-      display:none;
-    }
-
-    div#ordem{
-       display:none;
-    }
-    }
+    
 
     /* --- Animação de piscar quando chega novo pedido --- */
     @keyframes pisca {
