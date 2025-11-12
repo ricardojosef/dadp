@@ -21,8 +21,14 @@
     div#ordem {
       font-size: 150px;
       transition: color 0.3s;
+      margin-bottom: 100px;
+    }
+    @media(max-width:767px){
+       div#ordem {
+       display:none;
     }
 
+    }
     /* --- Animação de piscar quando chega novo pedido --- */
     @keyframes pisca {
       0%, 100% { color: black; }
