@@ -99,6 +99,14 @@
       color: #007bff;
     }
 
+    .pedido {
+      background: #f9f9f9;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin: 5px 0;
+      border-left: 4px solid #007bff;
+    }
+
   </style>
 </head>
 <body>
@@ -125,7 +133,7 @@
       </select>
 
       <label>Quantidade:</label>
-      <input type="number" id="qtd" placeholder="Qtd" />
+      <input type="number" id="qtd" placeholder="Qtd" min="1"/>
 
       <button id="add">Adicionar Ordem</button>
       <button id="reset">Reiniciar Dia</button>
@@ -139,10 +147,19 @@
   </main>
 
   <script type="module">
-    import {db, ref, push, onValue, update, remove} from "./firebase.js";
+    import { db, ref, push, set, onValue, update, remove, get } from "./firebase.js";
 
-    // Adiciona nova ordem
-    document.getElementById("add").onclick = () => {
+    // 🧮 Gera número sequencial de pedido (PED-001, PED-002...)
+    async function gerarNumeroPedido() {
+      const snapshot = await get(ref(db, "orders"));
+      const data = snapshot.val() || {};
+      const total = Object.keys(data).length;
+      const numero = (total + 1).toString().padStart(3, "0");
+      return "PED-" + numero;
+    }
+
+    // ➕ Adicionar nova ordem
+    document.getElementById("add").onclick = async () => {
       const tipo = document.getElementById("tipo").value;
       const qtd = Number(document.getElementById("qtd").value);
       if (!qtd || qtd <= 0) {
@@ -150,15 +167,21 @@
         return;
       }
 
-      push(ref(db, "orders"), {
+      const numero = await gerarNumeroPedido();
+
+      const novaOrdem = {
+        numero,
         tipo,
         qtd,
         etapa: 0,
         status: "pendente"
-      });
+      };
+
+      await push(ref(db, "orders"), novaOrdem);
+      document.getElementById("qtd").value = "";
     };
 
-    // Reiniciar o dia (apagar todas as ordens)
+    // 🔄 Reiniciar o dia (apagar todas as ordens)
     document.getElementById("reset").onclick = async () => {
       if (confirm("Tem certeza que deseja reiniciar o dia? Isso apagará todas as ordens.")) {
         await remove(ref(db, "orders"));
@@ -166,7 +189,7 @@
       }
     };
 
-    // Atualiza a fila de ordens em tempo real
+    // 📦 Atualiza a fila de ordens em tempo real
     onValue(ref(db, "orders"), (snap) => {
       const div = document.getElementById("fila");
       div.innerHTML = "";
@@ -176,18 +199,26 @@
         return;
       }
 
-      Object.entries(orders).forEach(([id, o]) => {
-        div.innerHTML += `<div>#${id} – ${o.tipo} – etapa:${o.etapa} – status:${o.status}</div>`;
+      // Mostra ordens do mais recente pro mais antigo
+      const lista = Object.entries(orders).reverse();
+      lista.forEach(([id, o]) => {
+        div.innerHTML += `
+          <div class="pedido">
+            <b>${o.numero}</b> — ${o.tipo} — qtd: ${o.qtd} — etapa: ${o.etapa} — status: ${o.status}
+          </div>
+        `;
       });
     });
 
-    // Atualiza status dos postos em tempo real
+    // 🧰 Atualiza status dos postos em tempo real
     onValue(ref(db, "posts"), (snap) => {
       const div = document.getElementById("postos");
       const p = snap.val() || {};
       div.innerHTML = "";
       Object.entries(p).forEach(([id, post]) => {
-        div.innerHTML += `<div>Posto ${id} — atual:${post.currentOrder || "-"} — ANDON:${post.andon || "ok"}</div>`;
+        div.innerHTML += `
+          <div>Posto ${id} — atual: ${post.currentOrder || "-"} — ANDON: ${post.andon || "ok"}</div>
+        `;
       });
     });
   </script>
