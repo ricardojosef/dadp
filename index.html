@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -13,7 +13,6 @@
       padding: 0;
     }
 
-    /* ======== MENU SUPERIOR ======== */
     nav {
       background-color: #007bff;
       color: white;
@@ -49,12 +48,33 @@
       opacity: 0.8;
     }
 
-    /* ======== CONTEÚDO ======== */
     main {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 40px;
+      gap: 40px;
+    }
+
+    .col-esquerda { flex: 2; }
+    .col-direita {
+      flex: 1;
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       text-align: center;
-      padding: 40px 20px;
-      max-width: 900px;
-      margin: auto;
+      height: fit-content;
+    }
+
+    .contador {
+      background: #f5f6fa;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 10px 0;
+      font-size: 22px;
+      font-weight: bold;
+      color: #007bff;
     }
 
     select, input, button {
@@ -73,29 +93,15 @@
       transition: background 0.3s;
     }
 
-    button:hover {
-      background-color: #0056b3;
-    }
-
-    #reset {
-      background-color: #e74c3c;
-    }
-
-    #reset:hover {
-      background-color: #c0392b;
-    }
-
-    #limparAndon {
-      background-color: #f39c12;
-    }
-
-    #limparAndon:hover {
-      background-color: #d68910;
-    }
+    button:hover { background-color: #0056b3; }
+    #reset { background-color: #e74c3c; }
+    #reset:hover { background-color: #c0392b; }
+    #limparAndon { background-color: #f39c12; }
+    #limparAndon:hover { background-color: #d68910; }
 
     #fila, #postos {
       margin: 25px auto;
-      width: 90%;
+      width: 100%;
       background: white;
       border-radius: 10px;
       padding: 15px;
@@ -103,10 +109,7 @@
       text-align: left;
     }
 
-    h2 {
-      color: #007bff;
-    }
-
+    h2 { color: #007bff; }
     .pedido {
       background: #f9f9f9;
       border-radius: 6px;
@@ -115,11 +118,11 @@
       border-left: 4px solid #007bff;
     }
 
+    .tempo { font-size: 14px; color: gray; }
   </style>
 </head>
 <body>
 
-  <!-- ======== MENU SUPERIOR ======== -->
   <nav>
     <h1>🏭 PCP - Fábrica dos Parafusos</h1>
     <div class="links">
@@ -131,116 +134,155 @@
     </div>
   </nav>
 
-  <!-- ======== CONTEÚDO PRINCIPAL ======== -->
   <main>
-    <div>
-      <label>Tipo:</label>
-      <select id="tipo">
-        <option value="pequeno">Parafuso pequeno</option>
-        <option value="grande">Parafuso grande</option>
-      </select>
+    <div class="col-esquerda">
+      <div>
+        <label>Tipo:</label>
+        <select id="tipo">
+          <option value="pequeno">Parafuso pequeno</option>
+          <option value="grande">Parafuso grande</option>
+        </select>
 
-      <label>Quantidade:</label>
-      <input type="number" id="qtd" placeholder="Qtd" min="1"/>
+        <label>Quantidade:</label>
+        <input type="number" id="qtd" placeholder="Qtd" min="1"/>
 
-      <button id="add">Adicionar Ordem</button>
-      <button id="reset">Reiniciar Dia</button>
-      <button id="limparAndon">Limpar ANDON</button>
+        <button id="add">Adicionar Ordem</button>
+        <button id="reset">Reiniciar Dia</button>
+        <button id="limparAndon">Limpar ANDON</button>
+      </div>
+
+      <h2>📦 Fila de Ordens</h2>
+      <div id="fila"></div>
+
+      <h2>🧰 Status dos Postos</h2>
+      <div id="postos"></div>
     </div>
 
-    <h2>📦 Fila de Ordens</h2>
-    <div id="fila"></div>
-
-    <h2>🧰 Status dos Postos</h2>
-    <div id="postos"></div>
+    <div class="col-direita">
+      <h2>📊 Produção</h2>
+      <div class="contador" id="ppCount">Parafusos Pequenos: 0</div>
+      <div class="contador" id="pgCount">Parafusos Grandes: 0</div>
+    </div>
   </main>
 
   <script type="module">
     import { db, ref, push, set, onValue, update, remove, get } from "./firebase.js";
 
-    // 🧮 Gera número sequencial de pedido (PED-001, PED-002...)
-    async function gerarNumeroPedido() {
-      const snapshot = await get(ref(db, "orders"));
-      const data = snapshot.val() || {};
-      const total = Object.keys(data).length;
-      const numero = (total + 1).toString().padStart(3, "0");
-      return "PED-" + numero;
+async function gerarNumeroPedido() {
+  const snapshot = await get(ref(db, "orders"));
+  const data = snapshot.val() || {};
+  const total = Object.keys(data).length;
+  const numero = (total + 1).toString().padStart(3, "0");
+  return "PED-" + numero;
+}
+
+document.getElementById("add").onclick = async () => {
+  const tipo = document.getElementById("tipo").value;
+  const qtd = Number(document.getElementById("qtd").value);
+  if (!qtd || qtd <= 0) {
+    alert("Informe uma quantidade válida!");
+    return;
+  }
+
+  const numeroBase = await gerarNumeroPedido();
+  const timestampInicio = new Date().toISOString();
+
+  // 🔹 Gera pedidos individuais (um por peça)
+  for (let i = 1; i <= qtd; i++) {
+    const novaOrdem = {
+      numero: `${numeroBase}-${i}`,
+      tipo,
+      qtd: 1,
+      etapa: 0,
+      status: "pendente",
+      timestampInicio
+    };
+    await push(ref(db, "orders"), novaOrdem);
+  }
+
+  document.getElementById("qtd").value = "";
+};
+
+// 🔹 Reiniciar dia
+document.getElementById("reset").onclick = async () => {
+  if (confirm("Tem certeza que deseja reiniciar o dia? Isso apagará todas as ordens.")) {
+    await remove(ref(db, "orders"));
+    alert("✅ Todos os pedidos foram apagados!");
+  }
+};
+
+// 🔹 Limpar ANDON
+document.getElementById("limparAndon").onclick = async () => {
+  if (confirm("Deseja limpar todos os alertas de ANDON?")) {
+    const snapshot = await get(ref(db, "posts"));
+    const posts = snapshot.val() || {};
+    for (const id in posts) {
+      await update(ref(db, "posts/" + id), { andon: "ok" });
+    }
+    alert("✅ Todos os alertas de ANDON foram limpos!");
+  }
+};
+
+// 🔹 Atualiza lista e contadores
+onValue(ref(db, "orders"), (snap) => {
+  const div = document.getElementById("fila");
+  div.innerHTML = "";
+  const orders = snap.val();
+  if (!orders) {
+    div.innerHTML = "<i>Sem pedidos no momento</i>";
+    return;
+  }
+
+  let countPP = 0, countPG = 0;
+
+  const lista = Object.entries(orders).reverse();
+  lista.forEach(([id, o]) => {
+    let tempoTxt = "";
+
+    if (o.timestampInicio) {
+      const inicio = new Date(o.timestampInicio);
+      const horaInicio = inicio.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+      if (o.status === "finalizado" && o.timestampFim) {
+        const fim = new Date(o.timestampFim);
+        const horaFim = fim.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        const duracaoSeg = Math.round((fim - inicio) / 1000);
+        const min = Math.floor(duracaoSeg / 60);
+        const seg = duracaoSeg % 60;
+        tempoTxt = `<div class="tempo">🕒 Início: ${horaInicio} | ✅ Fim: ${horaFim} | ⏱️ ${min}min ${seg}s</div>`;
+      } else {
+        tempoTxt = `<div class="tempo">🕒 Iniciado às ${horaInicio}</div>`;
+      }
     }
 
-    // ➕ Adicionar nova ordem
-    document.getElementById("add").onclick = async () => {
-      const tipo = document.getElementById("tipo").value;
-      const qtd = Number(document.getElementById("qtd").value);
-      if (!qtd || qtd <= 0) {
-        alert("Informe uma quantidade válida!");
-        return;
-      }
+    // 🔹 Corrige contagem total de parafusos produzidos
+    if (o.status === "finalizado") {
+      if (o.tipo === "pequeno") countPP += o.qtd || 1;
+      if (o.tipo === "grande") countPG += o.qtd || 1;
+    }
 
-      const numero = await gerarNumeroPedido();
+    div.innerHTML += `
+      <div class="pedido">
+        <b>${o.numero}</b> — ${o.tipo} — qtd: ${o.qtd} — etapa: ${o.etapa} — status: ${o.status}
+        ${tempoTxt}
+      </div>
+    `;
+  });
 
-      const novaOrdem = {
-        numero,
-        tipo,
-        qtd,
-        etapa: 0,
-        status: "pendente"
-      };
+  document.getElementById("ppCount").innerText = `Parafusos Pequenos: ${countPP}`;
+  document.getElementById("pgCount").innerText = `Parafusos Grandes: ${countPG}`;
+});
 
-      await push(ref(db, "orders"), novaOrdem);
-      document.getElementById("qtd").value = "";
-    };
+// 🔹 Atualiza status dos postos
+onValue(ref(db, "posts"), (snap) => {
+  const div = document.getElementById("postos");
+  const p = snap.val() || {};
+  div.innerHTML = "";
+  Object.entries(p).forEach(([id, post]) => {
+    div.innerHTML += `<div>Posto ${id} — atual: ${post.currentOrder || "-"} — ANDON: ${post.andon || "ok"}</div>`;
+  });
+});
 
-    // 🔄 Reiniciar o dia (apagar todas as ordens)
-    document.getElementById("reset").onclick = async () => {
-      if (confirm("Tem certeza que deseja reiniciar o dia? Isso apagará todas as ordens.")) {
-        await remove(ref(db, "orders"));
-        alert("✅ Todos os pedidos foram apagados!");
-      }
-    };
-
-    // 🧹 Limpar alertas de ANDON
-    document.getElementById("limparAndon").onclick = async () => {
-      if (confirm("Deseja limpar todos os alertas de ANDON?")) {
-        const snapshot = await get(ref(db, "posts"));
-        const posts = snapshot.val() || {};
-        for (const id in posts) {
-          await update(ref(db, "posts/" + id), { andon: "ok" });
-        }
-        alert("✅ Todos os alertas de ANDON foram limpos!");
-      }
-    };
-
-    // 📦 Atualiza a fila de ordens em tempo real
-    onValue(ref(db, "orders"), (snap) => {
-      const div = document.getElementById("fila");
-      div.innerHTML = "";
-      const orders = snap.val();
-      if (!orders) {
-        div.innerHTML = "<i>Sem pedidos no momento</i>";
-        return;
-      }
-
-      const lista = Object.entries(orders).reverse();
-      lista.forEach(([id, o]) => {
-        div.innerHTML += `
-          <div class="pedido">
-            <b>${o.numero}</b> — ${o.tipo} — qtd: ${o.qtd} — etapa: ${o.etapa} — status: ${o.status}
-          </div>
-        `;
-      });
-    });
-
-    // 🧰 Atualiza status dos postos em tempo real
-    onValue(ref(db, "posts"), (snap) => {
-      const div = document.getElementById("postos");
-      const p = snap.val() || {};
-      div.innerHTML = "";
-      Object.entries(p).forEach(([id, post]) => {
-        div.innerHTML += `
-          <div>Posto ${id} — atual: ${post.currentOrder || "-"} — ANDON: ${post.andon || "ok"}</div>
-        `;
-      });
-    });
   </script>
 
 </body>

@@ -199,7 +199,8 @@
       const { id, o } = window.currentOrder;
       update(ref(db, "orders/" + id), {
         status: "finalizado",
-        etapa: 4
+        etapa: 4,
+        timestampFim: new Date().toISOString()
       });
 
       pedidosConcluidos.unshift(`${o.numero || id} — ${o.tipo}`);
