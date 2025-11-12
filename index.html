@@ -85,6 +85,14 @@
       background-color: #c0392b;
     }
 
+    #limparAndon {
+      background-color: #f39c12;
+    }
+
+    #limparAndon:hover {
+      background-color: #d68910;
+    }
+
     #fila, #postos {
       margin: 25px auto;
       width: 90%;
@@ -137,6 +145,7 @@
 
       <button id="add">Adicionar Ordem</button>
       <button id="reset">Reiniciar Dia</button>
+      <button id="limparAndon">Limpar ANDON</button>
     </div>
 
     <h2>📦 Fila de Ordens</h2>
@@ -189,6 +198,18 @@
       }
     };
 
+    // 🧹 Limpar alertas de ANDON
+    document.getElementById("limparAndon").onclick = async () => {
+      if (confirm("Deseja limpar todos os alertas de ANDON?")) {
+        const snapshot = await get(ref(db, "posts"));
+        const posts = snapshot.val() || {};
+        for (const id in posts) {
+          await update(ref(db, "posts/" + id), { andon: "ok" });
+        }
+        alert("✅ Todos os alertas de ANDON foram limpos!");
+      }
+    };
+
     // 📦 Atualiza a fila de ordens em tempo real
     onValue(ref(db, "orders"), (snap) => {
       const div = document.getElementById("fila");
@@ -199,7 +220,6 @@
         return;
       }
 
-      // Mostra ordens do mais recente pro mais antigo
       const lista = Object.entries(orders).reverse();
       lista.forEach(([id, o]) => {
         div.innerHTML += `
