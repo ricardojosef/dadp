@@ -119,6 +119,7 @@
     }
 
     .tempo { font-size: 14px; color: gray; }
+    
   </style>
 </head>
 <body>
@@ -162,11 +163,45 @@
       <h2>📊 Produção</h2>
       <div class="contador" id="ppCount">Parafusos Pequenos: 0</div>
       <div class="contador" id="pgCount">Parafusos Grandes: 0</div>
+       <div class="contador" id="andonStatus" style="background:#ffe9e9; color:#c0392b;">
+  ANDON: Nenhum acionado
+</div>
     </div>
+
+   
   </main>
+  <!-- POP-UP ANDON -->
+<div id="popupAndon" style="
+  position: fixed;
+  top:0; left:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.4);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+">
+  <div style="
+    background:white;
+    padding:30px;
+    border-radius:15px;
+    width:350px;
+    text-align:center;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  ">
+    <h2 style="color:#c0392b;">⚠ ANDON acionado!</h2>
+    <p id="popupMsg">O posto X acionou o ANDON.</p>
+
+    <button id="btnPausar" style="background:#c0392b; color:white; padding:10px 15px; border:none; border-radius:10px; margin:5px;">Interromper linha</button>
+    <button id="btnContinuar" style="background:#27ae60; color:white; padding:10px 15px; border:none; border-radius:10px; margin:5px;">Continuar produção</button>
+  </div>
+</div>
+
 
   <script type="module">
-    import { db, ref, push, set, onValue, update, remove, get } from "./firebase.js";
+import { db, ref, push, set, onValue, update, remove, get } from "./firebase.js";
+
+let linhaPausada = false;
+let ultimoAndon = {}; // guarda últimos estados para detectar mudanças
 
 async function gerarNumeroPedido() {
   const snapshot = await get(ref(db, "orders"));
@@ -177,6 +212,16 @@ async function gerarNumeroPedido() {
 }
 
 document.getElementById("add").onclick = async () => {
+
+  // verifica a linha no Firebase
+  const linhaSnap = await get(ref(db, "config/linhaStatus"));
+  const linhaStatus = linhaSnap.val() || "ok";
+
+  if (linhaStatus === "parada") {
+    alert("A linha está pausada devido a um ANDON!");
+    return;
+  }
+
   const tipo = document.getElementById("tipo").value;
   const qtd = Number(document.getElementById("qtd").value);
   if (!qtd || qtd <= 0) {
@@ -187,7 +232,6 @@ document.getElementById("add").onclick = async () => {
   const numeroBase = await gerarNumeroPedido();
   const timestampInicio = new Date().toISOString();
 
-  // 🔹 Gera pedidos individuais (um por peça)
   for (let i = 1; i <= qtd; i++) {
     const novaOrdem = {
       numero: `${numeroBase}-${i}`,
@@ -203,27 +247,32 @@ document.getElementById("add").onclick = async () => {
   document.getElementById("qtd").value = "";
 };
 
-// 🔹 Reiniciar dia
 document.getElementById("reset").onclick = async () => {
   if (confirm("Tem certeza que deseja reiniciar o dia? Isso apagará todas as ordens.")) {
     await remove(ref(db, "orders"));
-    alert("✅ Todos os pedidos foram apagados!");
+    alert("Todos os pedidos foram apagados!");
   }
 };
 
-// 🔹 Limpar ANDON
 document.getElementById("limparAndon").onclick = async () => {
   if (confirm("Deseja limpar todos os alertas de ANDON?")) {
     const snapshot = await get(ref(db, "posts"));
     const posts = snapshot.val() || {};
+
+    // limpa todos ANDONs
     for (const id in posts) {
       await update(ref(db, "posts/" + id), { andon: "ok" });
     }
-    alert("✅ Todos os alertas de ANDON foram limpos!");
+
+    // 🔥 Libera a linha automaticamente
+    await update(ref(db, "config"), { linhaStatus: "ok" });
+
+    alert("ANDON limpo e linha liberada!");
+    document.getElementById("popupAndon").style.display = "none";
   }
 };
 
-// 🔹 Atualiza lista e contadores
+
 onValue(ref(db, "orders"), (snap) => {
   const div = document.getElementById("fila");
   div.innerHTML = "";
@@ -249,41 +298,94 @@ onValue(ref(db, "orders"), (snap) => {
         const duracaoSeg = Math.round((fim - inicio) / 1000);
         const min = Math.floor(duracaoSeg / 60);
         const seg = duracaoSeg % 60;
-        tempoTxt = `<div class="tempo">🕒 Início: ${horaInicio} | ✅ Fim: ${horaFim} | ⏱️ ${min}min ${seg}s</div>`;
+        tempoTxt = `<div class="tempo">🕒 Início: ${horaInicio} | ✔ Fim: ${horaFim} | ⏱ ${min}min ${seg}s</div>`;
       } else {
         tempoTxt = `<div class="tempo">🕒 Iniciado às ${horaInicio}</div>`;
       }
     }
 
-    // 🔹 Corrige contagem total de parafusos produzidos
     if (o.status === "finalizado") {
-      if (o.tipo === "pequeno") countPP += o.qtd || 1;
-      if (o.tipo === "grande") countPG += o.qtd || 1;
+      if (o.tipo === "pequeno") countPP += 1;
+      if (o.tipo === "grande") countPG += 1;
     }
 
     div.innerHTML += `
       <div class="pedido">
-        <b>${o.numero}</b> — ${o.tipo} — qtd: ${o.qtd} — etapa: ${o.etapa} — status: ${o.status}
+        <b>${o.numero}</b> — ${o.tipo} — etapa: ${o.etapa} — status: ${o.status}
         ${tempoTxt}
-      </div>
-    `;
+      </div>`;
   });
 
   document.getElementById("ppCount").innerText = `Parafusos Pequenos: ${countPP}`;
   document.getElementById("pgCount").innerText = `Parafusos Grandes: ${countPG}`;
 });
 
-// 🔹 Atualiza status dos postos
-onValue(ref(db, "posts"), (snap) => {
+
+// ================================
+//     🔥 ANDON EM TEMPO REAL
+// ================================
+onValue(ref(db, "posts"), async (snap) => {
+  const posts = snap.val() || {};
   const div = document.getElementById("postos");
-  const p = snap.val() || {};
   div.innerHTML = "";
-  Object.entries(p).forEach(([id, post]) => {
-    div.innerHTML += `<div>Posto ${id} — atual: ${post.currentOrder || "-"} — ANDON: ${post.andon || "ok"}</div>`;
+
+  let algumAndon = false;
+  let postoAtivado = null;
+
+  Object.entries(posts).forEach(([id, post]) => {
+    div.innerHTML += `
+      <div>Posto ${id} — atual: ${post.currentOrder || "-"} — ANDON: ${post.andon}</div>
+    `;
+
+    if (post.andon !== "ok" && ultimoAndon[id] === "ok") {
+      algumAndon = true;
+      postoAtivado = id;
+    }
+
+    ultimoAndon[id] = post.andon;
   });
+
+  const painelAndon = document.getElementById("andonStatus");
+
+  if (algumAndon) {
+    painelAndon.innerText = `ANDON: Posto ${postoAtivado} acionou!`;
+    painelAndon.style.background = "#ffcccc";
+    painelAndon.style.color = "#c0392b";
+
+    // 🔥 Para a linha globalmente
+    await update(ref(db, "config"), { linhaStatus: "parada" });
+
+    // Abre popup
+    document.getElementById("popupMsg").innerText = `O posto ${postoAtivado} acionou o ANDON!`;
+    document.getElementById("popupAndon").style.display = "flex";
+
+  } else {
+    painelAndon.innerText = "ANDON: Nenhum acionado";
+    painelAndon.style.background = "#f5f6fa";
+    painelAndon.style.color = "#007bff";
+  }
 });
 
-  </script>
+
+
+// ================================
+//     🔘 BOTÕES DO POP-UP ANDON
+// ================================
+document.getElementById("btnPausar").onclick = async () => {
+  await update(ref(db, "config"), { linhaStatus: "parada" });
+  alert("A linha foi pausada.");
+  document.getElementById("popupAndon").style.display = "none";
+};
+
+document.getElementById("btnContinuar").onclick = async () => {
+  await update(ref(db, "config"), { linhaStatus: "ok" });
+  alert("A linha continuará funcionando.");
+  document.getElementById("popupAndon").style.display = "none";
+};
+
+
+</script>
+
 
 </body>
 </html>
